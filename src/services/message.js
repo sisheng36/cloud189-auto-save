@@ -55,8 +55,8 @@ class MessageUtil {
     }
 
     // 发送消息
-    async sendMessage(message) {
-        await messageManager.sendMessage(message);
+    async sendMessage(message, task = null) {
+        await messageManager.sendMessage(message, task);
     }
     // 发送刮削消息
     async sendScrapeMessage(message) {
