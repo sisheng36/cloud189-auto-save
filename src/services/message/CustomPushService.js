@@ -17,13 +17,24 @@ class CustomPushService extends MessageService {
         return this.customPushConfigs && this.customPushConfigs.some(c => c && c.enabled === true);
     }
 
-    // 提取父路径（前两级）
-    _getParentPath(path) {
-        if (!path) return '';
-        const parts = path.split('/').filter(p => p);
-        if (parts.length === 0) return '/';
-        if (parts.length === 1) return '/' + parts[0];
-        return '/' + parts.slice(0, 2).join('/');
+// 提取路径并替换 {{strm}}
+    _extractAndReplaceStrm(message) {
+        if (!message.includes('{{strm}}') && !message.includes('[STRM:')) {
+            return { processedMessage: message, folderPaths: [] };
+        }
+        
+        // 直接提取所有 [STRM:xxx] 路径（已经是 realFolderName - resourceName 的结果）
+        const folderPaths = [];
+        const cleaned = message.replace(/\[STRM:([^\]]+)\]/g, (match, path) => {
+            folderPaths.push(path);
+            return '';
+        });
+        
+        // 替换 {{strm}} 为第一个路径
+        const firstPath = folderPaths.length > 0 ? folderPaths[0] : '/';
+        const result = cleaned.replace(/{{strm}}/g, firstPath);
+        
+        return { processedMessage: result, folderPaths: folderPaths };
     }
 
     // 判断是否电影类型（路径含电影/Movie/Movies）
@@ -35,29 +46,8 @@ class CustomPushService extends MessageService {
         );
     }
 
-    // 计算延迟时间（电影30秒，其他120秒）
-    _calculateDelay(folderPaths) {
-        return this._isMovieType(folderPaths) ? 30 : 120;
-    }
-
-    // 提取路径并替换 {{strm}}
-    _extractAndReplaceStrm(message) {
-        if (!message.includes('{{strm}}') && !message.includes('[STRM:')) {
-            return { processedMessage: message, folderPaths: [] };
-        }
-        
-        const paths = [];
-        const cleaned = message.replace(/\[STRM:([^\]]+)\]/g, (match, path) => {
-            paths.push(path);
-            return '';
-        });
-        
-        const result = cleaned.replace(/{{strm}}/g, () => paths.shift() || '/');
-        return { processedMessage: result, folderPaths: paths };
-    }
-
     // 队列管理：新增或更新现有队列
-    async _enqueueOrUpdate(path, newMessage, delay) {
+    async _enqueueOrUpdate(path, newMessage, delay, folderPaths = []) {
         const existing = this.pendingQueue.get(path);
         
         if (existing) {
@@ -70,6 +60,7 @@ class CustomPushService extends MessageService {
             }, delay * 1000);
             
             existing.message = newMessage;
+            existing.folderPaths = folderPaths;
             existing.timeoutId = timeoutId;
         } else {
             // 新队列 → 延迟发送
@@ -81,6 +72,7 @@ class CustomPushService extends MessageService {
             
             this.pendingQueue.set(path, {
                 message: newMessage,
+                folderPaths: folderPaths,
                 timeoutId: timeoutId
             });
         }
@@ -91,10 +83,13 @@ class CustomPushService extends MessageService {
         const item = this.pendingQueue.get(path);
         if (!item) return;
         
+        // 从队列中获取原始 folderPaths，然后用 path（父路径）作为 strm
+        const strmPath = path; // path 已经是父路径（如 /电影）
+        
         let allSuccess = true;
         for (const config of this.customPushConfigs) {
             if (config && config.enabled) {
-                const success = await this._sendSingleRequest('应用通知', item.message, config);
+                const success = await this._sendSingleRequest(strmPath, item.message, config);
                 if (!success) allSuccess = false;
             }
         }
@@ -120,7 +115,9 @@ class CustomPushService extends MessageService {
         const safeTitle = escapeValuesForJson ? this._jsonEscape(title) : title;
         const safeContent = escapeValuesForJson ? this._jsonEscape(content) : content;
 
-        return template.replace(/{{title}}/g, safeTitle).replace(/{{content}}/g, safeContent);
+        return template.replace(/{{title}}/g, safeTitle)
+                      .replace(/{{content}}/g, safeContent)
+                      .replace(/{{strm}}/g, title); // 用 title 参数传递 strm 路径
     }
 
     _replacePlaceholdersInObject(obj, title, content) {
@@ -232,19 +229,16 @@ class CustomPushService extends MessageService {
         // 提取路径并替换 {{strm}}
         const { processedMessage, folderPaths } = this._extractAndReplaceStrm(message);
         
-        // 提取父路径
-        const parentPaths = folderPaths.map(p => this._getParentPath(p));
+        // 计算延迟（电影30秒，其他120秒）
+        const delay = folderPaths.length > 0 && this._isMovieType(folderPaths) ? 30 : 120;
         
-        // 计算延迟
-        const delay = this._calculateDelay(folderPaths);
-        
-        // 逐个路径处理队列
-        for (const path of parentPaths) {
-            await this._enqueueOrUpdate(path, processedMessage, delay);
+        // 逐个路径处理队列（folderPaths 已经是 realFolderName - resourceName 的结果）
+        for (const path of folderPaths) {
+            await this._enqueueOrUpdate(path, processedMessage, delay, folderPaths);
         }
         
         // 如果没有路径，仍然直接发送
-        if (parentPaths.length === 0) {
+        if (folderPaths.length === 0) {
             let allSuccess = true;
             for (const config of this.customPushConfigs) {
                 if (config && config.enabled) {
