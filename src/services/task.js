@@ -38,11 +38,20 @@ class TaskService {
     _extractFolderPath(task) {
         if (!task.realFolderName || !task.resourceName) return '';
         
-        let folderPath = task.realFolderName;
+        // 获取 resourceName 的基础名称（去掉 (根) 后缀）
+        const resourceBaseName = task.resourceName.replace(/\(根\)$/, '').trim();
         
-        // 移除 resourceName（可能有 (根) 后缀）
-        const resourceBaseName = task.resourceName.replace('(根)', '').trim();
-        folderPath = folderPath.replace(resourceBaseName, '');
+        // 找到 resourceBaseName 在 realFolderName 中的位置，取之前的路径
+        const index = task.realFolderName.indexOf(resourceBaseName);
+        
+        if (index === -1) {
+            // 如果找不到，尝试取第一级目录
+            const parts = task.realFolderName.split('/').filter(p => p);
+            return '/' + (parts[0] || '');
+        }
+        
+        // 取 resourceName 之前的路径
+        let folderPath = task.realFolderName.substring(0, index);
         
         // 清理多余的 /
         folderPath = folderPath.replace(/\/+$/, '');
