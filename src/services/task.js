@@ -36,27 +36,14 @@ class TaskService {
 
     // 提取文件夹路径（用于自定义推送 {{strm}} 占位符）
     _extractFolderPath(task) {
-        if (!task.realFolderName || !task.resourceName) return '';
+        if (!task.realFolderName) return '';
         
-        let folderPath = task.realFolderName;
+        // 提取第一级目录
+        const parts = task.realFolderName.split('/').filter(p => p);
+        if (parts.length === 0) return '/';
         
-        // 移除 shareFolderName 部分
-        if (task.shareFolderName) {
-            folderPath = folderPath.replace(`/${task.shareFolderName}`, '');
-        }
-        
-        // 移除 resourceName 的目录部分（如 /庆余年/Season 01 -> 移除 /庆余年）
-        const resourceParts = task.resourceName.split('/').filter(p => p);
-        if (resourceParts.length > 0) {
-            folderPath = folderPath.replace(`/${resourceParts[0]}`, '');
-        }
-        
-        // 确保以 / 开头
-        if (folderPath && !folderPath.startsWith('/')) {
-            folderPath = '/' + folderPath;
-        }
-        
-        return folderPath || '/';
+        // 返回第一级目录
+        return '/' + parts[0];
     }
 
     // 解析分享链接
