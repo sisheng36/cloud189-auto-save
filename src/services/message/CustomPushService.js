@@ -26,11 +26,19 @@ class CustomPushService extends MessageService {
             return '';
         });
         
-        // 如果没有 [STRM:xxx] 但有 task，则从 task 中提取
-        if (folderPaths.length === 0 && task && task.realFolderName) {
-            const parts = task.realFolderName.split('/').filter(p => p);
-            if (parts.length > 0) {
-                folderPaths.push('/' + parts[0]);
+        // 如果没有 [STRM:xxx] 但有 task，则从 task 中提取（realFolderName - resourceName）
+        if (folderPaths.length === 0 && task && task.realFolderName && task.resourceName) {
+            let folderPath = task.realFolderName;
+            const resourceBaseName = task.resourceName.replace('(根)', '').trim();
+            folderPath = folderPath.replace(resourceBaseName, '');
+            folderPath = folderPath.replace(/\/+$/, '');
+            
+            if (folderPath && !folderPath.startsWith('/')) {
+                folderPath = '/' + folderPath;
+            }
+            
+            if (folderPath) {
+                folderPaths.push(folderPath);
             }
         }
         
