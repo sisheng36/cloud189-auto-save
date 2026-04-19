@@ -25,13 +25,14 @@ class MessageService {
     /**
      * 发送消息
      * @param {string} message - 要发送的消息内容
+     * @param {object} task - 任务对象（可选）
      * @returns {Promise<boolean>} - 发送结果
      */
-    async sendMessage(message) {
+    async sendMessage(message, task = null) {
         if (!this.enabled) {
             return false;
         }
-        return await this._send(message);
+        return await this._send(message, task);
     }
 
     /**
