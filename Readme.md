@@ -320,38 +320,12 @@ docker run -d \
 
 
 
-</details>
+## 🙏 鸣谢
 
-## ❤️ 支持项目
-
-如果觉得这个项目对你有帮助，你可以通过以下方式支持我：
-
-1. ⭐ 给项目点个 Star，让更多的人看到
-2. 📢 分享给更多有需要的朋友
-3. ☕ 请作者喝杯冰阔乐~
-
-<div align="center">
-<img src="img/wechat.JPG" alt="微信" height="300">
-    <img src="img/ali.png" alt="支付宝" height="300" style="margin-right: 20px">
-</div>
-
+- [原版项目](https://github.com/1307super/cloud189-auto-save)
 
 ## ⚠️ 特别声明
 
 1. 本项目仅供学习交流使用，请勿用于任何非法用途
 2. 本项目仅提供天翼云盘资源转存功能，所有接口均为天翼云盘官方接口，本项目不对任何资源内容负责
-
-## 📈 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=1307super/cloud189-auto-save&type=Date)](https://star-history.com/#1307super/cloud189-auto-save&Date)
-
-## License
-
-MIT
-
-## 赞助商
-
-本项目 CDN 加速及安全防护由 Tencent EdgeOne 赞助
-
-<a href="https://edgeone.ai/?from=github" target="_blank"><img title="亚洲最佳CDN、边缘和安全解决方案 - Tencent EdgeOne" src="https://edgeone.ai/media/34fe3a45-492d-4ea4-ae5d-ea1087ca7b4b.png" width="300"></a>
 
