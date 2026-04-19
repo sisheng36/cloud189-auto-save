@@ -34,6 +34,17 @@ class TaskService {
         }
     }
 
+    // 提取文件夹路径（用于自定义推送 {{strm}} 占位符）
+    _extractFolderPath(task) {
+        if (!task.realFolderName || !task.resourceName) return '';
+        let folderPath = task.realFolderName;
+        if (task.shareFolderName) {
+            folderPath = folderPath.replace(`/${task.shareFolderName}`, '');
+        }
+        folderPath = folderPath.replace(`/${task.resourceName}`, '');
+        return folderPath || '';
+    }
+
     // 解析分享链接
     async getShareInfo(cloud189, shareCode) {
          const shareInfo = await cloud189.getShareInfo(shareCode);
@@ -917,6 +928,7 @@ class TaskService {
             logTaskEvent('没有待处理的任务');
             return;
         }
+
         let saveResults = []
         logTaskEvent(`================================`);
         for (const task of tasks) {
@@ -924,9 +936,12 @@ class TaskService {
             logTaskEvent(`任务[${taskName}]开始执行`);
             try {
                 const result = await this.processTask(task);
-            if (result) {
-                saveResults.push(result)
-            }
+                if (result) {
+                    // 嵌入路径标记 [STRM:路径] 用于自定义推送 {{strm}} 占位符
+                    const folderPath = this._extractFolderPath(task);
+                    const msgWithPath = result + (folderPath ? `[STRM:${folderPath}]` : '');
+                    saveResults.push(msgWithPath);
+                }
             } catch (error) {
                 logTaskEvent(`任务${task.id}执行失败: ${error.message}`);
             }finally {
@@ -936,7 +951,7 @@ class TaskService {
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         if (saveResults.length > 0) {
-            this.messageUtil.sendMessage(saveResults.join("\n\n"))
+            this.messageUtil.sendMessage(saveResults.join("\n\n"), tasks[0])
         }
         logTaskEvent(`================================`);
         return saveResults
@@ -1047,7 +1062,10 @@ class TaskService {
             try {
                 const result = await this.processTask(task);
                 if (result) {
-                    saveResults.push(result);
+                    // 嵌入路径标记 [STRM:路径] 用于自定义推送 {{strm}} 占位符
+                    const folderPath = this._extractFolderPath(task);
+                    const msgWithPath = result + (folderPath ? `[STRM:${folderPath}]` : '');
+                    saveResults.push(msgWithPath);
                 }
             } catch (error) {
                 console.error(`重试任务${task.name}执行失败:`, error);
@@ -1059,7 +1077,7 @@ class TaskService {
         }
         
         if (saveResults.length > 0) {
-            this.messageUtil.sendMessage(saveResults.join("\n\n"));
+            this.messageUtil.sendMessage(saveResults.join("\n\n"), retryTasks[0]);
         }
         logTaskEvent(`================================`);
         return saveResults;
