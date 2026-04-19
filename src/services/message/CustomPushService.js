@@ -18,17 +18,21 @@ class CustomPushService extends MessageService {
     }
 
 // 提取路径并替换 {{strm}}
-    _extractAndReplaceStrm(message) {
-        if (!message.includes('{{strm}}') && !message.includes('[STRM:')) {
-            return { processedMessage: message, folderPaths: [] };
-        }
-        
-        // 直接提取所有 [STRM:xxx] 路径（已经是 realFolderName - resourceName 的结果）
+    _extractAndReplaceStrm(message, task = null) {
+        // 先尝试从 [STRM:xxx] 中提取路径
         const folderPaths = [];
         const cleaned = message.replace(/\[STRM:([^\]]+)\]/g, (match, path) => {
             folderPaths.push(path);
             return '';
         });
+        
+        // 如果没有 [STRM:xxx] 但有 task，则从 task 中提取
+        if (folderPaths.length === 0 && task && task.realFolderName) {
+            const parts = task.realFolderName.split('/').filter(p => p);
+            if (parts.length > 0) {
+                folderPaths.push('/' + parts[0]);
+            }
+        }
         
         // 替换 {{strm}} 为第一个路径
         const firstPath = folderPaths.length > 0 ? folderPaths[0] : '/';
@@ -227,7 +231,7 @@ class CustomPushService extends MessageService {
         }
         
         // 提取路径并替换 {{strm}}
-        const { processedMessage, folderPaths } = this._extractAndReplaceStrm(message);
+        const { processedMessage, folderPaths } = this._extractAndReplaceStrm(message, task);
         
         // 计算延迟（电影30秒，其他120秒）
         const delay = folderPaths.length > 0 && this._isMovieType(folderPaths) ? 30 : 120;
