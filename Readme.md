@@ -19,16 +19,9 @@
 </div>
 
 
-## 💬 Pro版震撼上线
-**天翼自动转存Pro版上线**！永久买断制，支持网盘文件一键预览、1000+任务批量创建、「玄鲸极速」播放加速、TG机器人批量任务管理，集成反代+直链解析实现0门槛部署，点击查看[详细文档](https://1307super.github.io/Cloud189AutoSaveProDoc/)了解更多。
+## 专为SmartStrm优化版，主要是加入了自定义推送中对于保存路径的支持。只需要将strmtask的参数更改为你自己在ss中的任务名即可，可填写多个，中间用半角符号","分隔。具体设置如下：
+<img width="442" height="629" alt="截屏2026-04-19 16 37 10" src="https://github.com/user-attachments/assets/7e55ed54-02b3-4b6c-a360-6fa38668caf2" />
 
-
-
-## 💬 社区交流
-- ~~[Telegram 群组](https://t.me/cloud189_auto_save) - 加入官方群组获取帮助和分享经验~~ 因不知名原因, 账号被封禁
-- ~~请加[Telegram 临时群组](https://t.me/cloud189_auto_save2)~~ 也没了
-- [Telegram 3群](https://t.me/cloud189_auto_save3) 且加且珍惜
-- ## 遇到问题请先查看 [Wiki 文档](https://github.com/1307super/cloud189-auto-save/wiki)
 
 ## ⚠️ 安全警告
 
