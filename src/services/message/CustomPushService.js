@@ -9,11 +9,98 @@ class CustomPushService extends MessageService {
         // 确保 this.customPushConfigs 总是一个数组
         this.customPushConfigs = Array.isArray(config) ? config : (config ? [config] : []);
         this.initialize(); // 调用父类的 initialize，它会调用下面的 checkEnabled
+        this.pendingQueue = new Map(); // 待发送队列：Map<父路径, { message, timeoutId }>
     }
 
     checkEnabled() {
         // 检查配置数组中是否至少有一个启用的推送
         return this.customPushConfigs && this.customPushConfigs.some(c => c && c.enabled === true);
+    }
+
+    // 提取父路径（前两级）
+    _getParentPath(path) {
+        if (!path) return '';
+        const parts = path.split('/').filter(p => p);
+        if (parts.length === 0) return '/';
+        if (parts.length === 1) return '/' + parts[0];
+        return '/' + parts.slice(0, 2).join('/');
+    }
+
+    // 判断是否电影类型（路径含电影/Movie/Movies）
+    _isMovieType(paths) {
+        if (!paths || paths.length === 0) return false;
+        const keywords = ['电影', 'movie', 'movies'];
+        return paths.some(path => 
+            keywords.some(keyword => path.toLowerCase().includes(keyword))
+        );
+    }
+
+    // 计算延迟时间（电影30秒，其他120秒）
+    _calculateDelay(folderPaths) {
+        return this._isMovieType(folderPaths) ? 30 : 120;
+    }
+
+    // 提取路径并替换 {{strm}}
+    _extractAndReplaceStrm(message) {
+        if (!message.includes('{{strm}}') && !message.includes('[STRM:')) {
+            return { processedMessage: message, folderPaths: [] };
+        }
+        
+        const paths = [];
+        const cleaned = message.replace(/\[STRM:([^\]]+)\]/g, (match, path) => {
+            paths.push(path);
+            return '';
+        });
+        
+        const result = cleaned.replace(/{{strm}}/g, () => paths.shift() || '/');
+        return { processedMessage: result, folderPaths: paths };
+    }
+
+    // 队列管理：新增或更新现有队列
+    async _enqueueOrUpdate(path, newMessage, delay) {
+        const existing = this.pendingQueue.get(path);
+        
+        if (existing) {
+            // 已有队列 → 更新消息，重新计时
+            clearTimeout(existing.timeoutId);
+            logTaskEvent(`[CustomPushService] 路径${path}在${delay}秒内收到新任务，更新内容并重新计时`);
+            
+            const timeoutId = setTimeout(() => {
+                this._flushQueue(path);
+            }, delay * 1000);
+            
+            existing.message = newMessage;
+            existing.timeoutId = timeoutId;
+        } else {
+            // 新队列 → 延迟发送
+            logTaskEvent(`[CustomPushService] 路径${path}延迟${delay}秒后发送`);
+            
+            const timeoutId = setTimeout(() => {
+                this._flushQueue(path);
+            }, delay * 1000);
+            
+            this.pendingQueue.set(path, {
+                message: newMessage,
+                timeoutId: timeoutId
+            });
+        }
+    }
+
+    // 实际发送
+    async _flushQueue(path) {
+        const item = this.pendingQueue.get(path);
+        if (!item) return;
+        
+        let allSuccess = true;
+        for (const config of this.customPushConfigs) {
+            if (config && config.enabled) {
+                const success = await this._sendSingleRequest('应用通知', item.message, config);
+                if (!success) allSuccess = false;
+            }
+        }
+        
+        logTaskEvent(`[CustomPushService] 路径${path}推送完成`);
+        this.pendingQueue.delete(path);
     }
 
     _jsonEscape(str) {
@@ -137,20 +224,38 @@ class CustomPushService extends MessageService {
         }
     }
 
-    async _send(message, title = '应用通知') {
+    async _send(message, task = null, title = '应用通知') {
         if (!this.enabled) {
             return;
         }
-        let allSuccess = true;
-        for (const config of this.customPushConfigs) {
-            if (config && config.enabled) {
-                const success = await this._sendSingleRequest(title, message, config);
-                if (!success) {
-                    allSuccess = false;
+        
+        // 提取路径并替换 {{strm}}
+        const { processedMessage, folderPaths } = this._extractAndReplaceStrm(message);
+        
+        // 提取父路径
+        const parentPaths = folderPaths.map(p => this._getParentPath(p));
+        
+        // 计算延迟
+        const delay = this._calculateDelay(folderPaths);
+        
+        // 逐个路径处理队列
+        for (const path of parentPaths) {
+            await this._enqueueOrUpdate(path, processedMessage, delay);
+        }
+        
+        // 如果没有路径，仍然直接发送
+        if (parentPaths.length === 0) {
+            let allSuccess = true;
+            for (const config of this.customPushConfigs) {
+                if (config && config.enabled) {
+                    const success = await this._sendSingleRequest(title, message, config);
+                    if (!success) allSuccess = false;
                 }
             }
+            return allSuccess;
         }
-        return allSuccess; 
+        
+        return true;
     }
 
     async _sendScrapeMessage(scrapeMessage) {
