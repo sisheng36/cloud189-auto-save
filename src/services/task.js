@@ -36,14 +36,23 @@ class TaskService {
 
     // 提取文件夹路径（用于自定义推送 {{strm}} 占位符）
     _extractFolderPath(task) {
-        if (!task.realFolderName) return '';
+        if (!task.realFolderName || !task.resourceName) return '';
         
-        // 提取第一级目录
-        const parts = task.realFolderName.split('/').filter(p => p);
-        if (parts.length === 0) return '/';
+        let folderPath = task.realFolderName;
         
-        // 返回第一级目录
-        return '/' + parts[0];
+        // 移除 resourceName（可能有 (根) 后缀）
+        const resourceBaseName = task.resourceName.replace('(根)', '').trim();
+        folderPath = folderPath.replace(resourceBaseName, '');
+        
+        // 清理多余的 /
+        folderPath = folderPath.replace(/\/+$/, '');
+        
+        // 确保以 / 开头
+        if (folderPath && !folderPath.startsWith('/')) {
+            folderPath = '/' + folderPath;
+        }
+        
+        return folderPath || '/';
     }
 
     // 解析分享链接
@@ -761,7 +770,7 @@ class TaskService {
             message.splice(5, message.length - 10, '├─ ...');
         }
         message.length > 0 && logTaskEvent(`${task.resourceName}自动重命名完成: \n${message.join('\n')}`)
-        message.length > 0 && this.messageUtil.sendMessage(`${task.resourceName}自动重命名: \n${message.join('\n')}`, task);
+        message.length > 0 && this.messageUtil.sendMessage(`${task.resourceName}自动重命名: \n${message.join('\n')}`);
     }
 
     // 根据AI分析结果生成新文件名
