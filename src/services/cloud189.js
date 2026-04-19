@@ -41,7 +41,9 @@ class Cloud189Service {
         body.headers = {'Accept': 'application/json;charset=UTF-8'}
         try {
             const noCache = Math.random().toString()
-            return await this.client.request('https://cloud.189.cn' + action+'?noCach='+noCache, body).json();
+            const targetUrl = action.startsWith('http') ? action : 'https://cloud.189.cn' + action;    
+            const separator = targetUrl.includes('?') ? '&' : '?';
+            return await this.client.request(targetUrl + separator + 'noCach=' + noCache, body).json();
         }catch (error) {
             if (error instanceof got.HTTPError) {
                 const responseBody = JSON.parse(error.response.body);
