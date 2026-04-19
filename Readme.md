@@ -98,7 +98,7 @@ docker run -d \
   --name cloud189 \
   -e PUID=0 \
   -e PGID=0 \
-  xia1307/cloud189-auto-save
+  sisheng36/cloud189-auto-save
   ```
 注意: `yourpath`请替换为你宿主机的目录; 如果不需要strm功能, 可以不挂载strm目录, 允许配置PUID和PGID, 默认0
 
